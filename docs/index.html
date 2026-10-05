@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nifty 50 Signals</title>
+<meta name="description" content="Daily 5/13 EMA crossover signals and 30-year backtest across the Nifty 50, by Auchit Sawai.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f7f8fa; --card:#fff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#1F3864; --up:#0f8a5f; --down:#c2410c; --up-bg:#e7f6ef; --down-bg:#fdeee5; --chip:#eef1f6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0d1117; --card:#161b22; --ink:#e6edf3; --muted:#8b949e; --line:#30363d;
+            --accent:#7ea6e0; --up:#3fb950; --down:#f0883e; --up-bg:#12261b; --down-bg:#2d1a0e; --chip:#21262d; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 Inter,system-ui,sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:0 16px; }
+  header { border-bottom:1px solid var(--line); background:var(--card); }
+  header .wrap { display:flex; align-items:center; gap:24px; height:58px; }
+  .brand { font-weight:700; font-size:16px; color:var(--accent); text-decoration:none; }
+  nav a { color:var(--muted); text-decoration:none; font-weight:500; margin-right:18px; }
+  nav a.on { color:var(--ink); }
+  .asof { margin-left:auto; color:var(--muted); font-size:12px; }
+  h1 { font-size:24px; margin:28px 0 4px; }
+  .lede { color:var(--muted); margin:0 0 20px; max-width:760px; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:20px; }
+  .tile { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .tile .k { color:var(--muted); font-size:12px; }
+  .tile .v { font-size:22px; font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .tile .s { color:var(--muted); font-size:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:20px; }
+  .card h2 { font-size:15px; margin:0 0 12px; }
+  .tools { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .tools input { flex:1; min-width:160px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); font:inherit; }
+  .seg button { border:1px solid var(--line); background:var(--card); color:var(--muted); padding:7px 12px; font:inherit; cursor:pointer; }
+  .seg button:first-child { border-radius:8px 0 0 8px; } .seg button:last-child { border-radius:0 8px 8px 0; }
+  .seg button + button { border-left:0; }
+  .seg button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .tbl { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--muted); font-weight:500; font-size:12px; cursor:pointer; user-select:none; }
+  td.n, th.n { text-align:right; }
+  tr.row { cursor:pointer; } tr.row:hover td { background:var(--chip); }
+  .tk { font-weight:600; } .nm { color:var(--muted); font-size:12px; }
+  .up { color:var(--up); } .down { color:var(--down); }
+  .chip { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; background:var(--chip); color:var(--muted); }
+  .chip.buy { background:var(--up-bg); color:var(--up); } .chip.short { background:var(--down-bg); color:var(--down); }
+  .chip.hot { outline:2px solid currentColor; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:800px) { .grid2 { grid-template-columns:1fr; } header .wrap { gap:12px; } .asof { display:none; } }
+  #chart { height:420px; }
+  .legend { display:flex; gap:16px; color:var(--muted); font-size:12px; margin-top:8px; flex-wrap:wrap; }
+  .legend i { display:inline-block; width:14px; height:3px; vertical-align:middle; margin-right:5px; }
+  .bars { display:flex; align-items:flex-end; gap:2px; height:160px; padding-top:8px; }
+  .bars div { flex:1; min-width:3px; border-radius:2px 2px 0 0; position:relative; }
+  .bars div:hover::after { content:attr(data-t); position:absolute; bottom:100%; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:3px 6px; border-radius:4px; font-size:11px; white-space:nowrap; z-index:2; }
+  .axis { display:flex; justify-content:space-between; color:var(--muted); font-size:11px; margin-top:4px; }
+  .note { color:var(--muted); font-size:12px; }
+  footer { color:var(--muted); font-size:12px; padding:24px 0 40px; border-top:1px solid var(--line); margin-top:12px; }
+  footer a { color:var(--accent); }
+  .mono { font-family:"JetBrains Mono",monospace; font-size:12.5px; }
+  .back { color:var(--accent); text-decoration:none; font-weight:500; display:inline-block; margin-top:20px; }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <a class="brand" href="#/">Nifty 50 Signals</a>
+  <nav><a href="#/" data-r="signals">Signals</a><a href="#/backtest" data-r="backtest">Backtest</a><a href="#/method" data-r="method">Method</a></nav>
+  <span class="asof" id="asof"></span>
+</div></header>
+
+<main class="wrap" id="app"><p class="lede" style="margin-top:28px">Loading…</p></main>
+
+<footer><div class="wrap">
+  Built by <b>Auchit Sawai</b> · <a href="https://www.linkedin.com/in/auchitsawai">LinkedIn</a> ·
+  <a href="https://github.com/Auchit-Sawai/nifty-signals">Source on GitHub</a><br>
+  Data refreshed automatically each trading day after NSE close. Educational project, not investment advice.
+</div></footer>
+
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const app = $('#app');
+let S = null;
+const fmt = (x, d = 2) => x == null ? '–' : Number(x).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d });
+const sgn = (x, d = 2) => x == null ? '–' : `<span class="${x >= 0 ? 'up' : 'down'}">${x > 0 ? '+' : ''}${fmt(x, d)}%</span>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const dateFmt = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '–';
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+function chip(st, side) {
+  if (!st) return '<span class="chip">No signal</span>';
+  const live = st.status === 'OPEN' || st.status === 'ACTIVE TODAY';
+  const label = st.status === 'ACTIVE TODAY' ? 'NEW TODAY' : st.status;
+  return `<span class="chip ${live ? side.toLowerCase() : ''} ${st.status === 'ACTIVE TODAY' ? 'hot' : ''}">${label}</span>`;
+}
+function tiles(list) {
+  return `<div class="tiles">${list.map(([k, v, s]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`).join('')}</div>`;
+}
+
+// ---------- Signals ----------
+let side = 'BUY', sortKey = 'date', sortDir = -1, q = '';
+function signals() {
+  const open = x => S.stocks.filter(s => s[x] && (s[x].status === 'OPEN' || s[x].status === 'ACTIVE TODAY')).length;
+  const today = S.stocks.filter(s => s.buy?.date === S.asOf || s.short?.date === S.asOf).length;
+  const up = S.stocks.filter(s => s.trend === 'UP').length;
+  app.innerHTML = `
+    <h1>Daily signal dashboard</h1>
+    <p class="lede">Latest 5/13 EMA crossover signal for every Nifty 50 stock, confirmed by a 10-day SMA trend filter and above-average volume, with a ${S.rules.stopLossPct}% stop-loss tracked from entry.</p>
+    ${tiles([
+      ['New signals today', today, dateFmt(S.asOf)],
+      ['Open buy signals', open('buy'), 'not stopped or reversed'],
+      ['Open short signals', open('short'), 'not stopped or reversed'],
+      ['Stocks in uptrend', `${up} / ${S.stocks.length}`, '5 EMA above 13 EMA'],
+    ])}
+    <div class="card">
+      <div class="tools">
+        <div class="seg"><button data-s="BUY">Buy signals</button><button data-s="SHORT">Short signals</button></div>
+        <input id="q" placeholder="Search ticker or company" value="${esc(q)}">
+      </div>
+      <div class="tbl"><table id="t"></table></div>
+      <p class="note">Status: <b>New today</b> = signal fired on the latest close · <b>Open</b> = still running · <b>Stopped out</b> = closed beyond the ${S.rules.stopLossPct}% stop · <b>Reversed</b> = closed by the opposite signal. Click a row for the chart.</p>
+    </div>`;
+  app.querySelectorAll('.seg button').forEach(b => { b.classList.toggle('on', b.dataset.s === side); b.onclick = () => { side = b.dataset.s; signals(); }; });
+  $('#q').oninput = e => { q = e.target.value; drawTable(); };
+  drawTable();
+}
+function drawTable() {
+  const k = side === 'BUY' ? 'buy' : 'short';
+  const cols = [
+    ['ticker', 'Stock', s => s.ticker],
+    ['price', 'Last price', s => s.price, 1],
+    ['dayPct', 'Day', s => s.dayPct, 1],
+    ['date', 'Signal date', s => s[k]?.date || ''],
+    ['entry', 'Signal price', s => s[k]?.price, 1],
+    ['move', 'Since signal', s => s[k]?.movePct, 1],
+    ['status', 'Status', s => s[k]?.status || ''],
+    ['win', 'Hist. win rate', s => s.stats.winRate, 1],
+  ];
+  const f = q.trim().toLowerCase();
+  const rows = S.stocks.filter(s => !f || s.ticker.toLowerCase().includes(f) || s.name.toLowerCase().includes(f));
+  const get = cols.find(c => c[0] === sortKey)[2];
+  rows.sort((a, b) => { const x = get(a), y = get(b); return (x == null) - (y == null) || (x > y ? 1 : x < y ? -1 : 0) * sortDir; });
+  $('#t').innerHTML = `<thead><tr>${cols.map(c => `<th class="${c[3] ? 'n' : ''}" data-k="${c[0]}">${c[1]}${sortKey === c[0] ? (sortDir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead><tbody>${rows.map(s => {
+    const st = s[k];
+    return `<tr class="row" data-t="${esc(s.ticker)}">
+      <td><div class="tk">${esc(s.ticker)}</div><div class="nm">${esc(s.name)}</div></td>
+      <td class="n">₹${fmt(s.price)}</td><td class="n">${sgn(s.dayPct)}</td>
+      <td>${dateFmt(st?.date)}</td><td class="n">${st ? '₹' + fmt(st.price) : '–'}</td>
+      <td class="n">${sgn(st?.movePct)}</td><td>${chip(st, side)}</td><td class="n">${fmt(s.stats.winRate, 1)}%</td></tr>`;
+  }).join('')}</tbody>`;
+  $('#t').querySelectorAll('th').forEach(th => th.onclick = () => { sortDir = sortKey === th.dataset.k ? -sortDir : -1; sortKey = th.dataset.k; drawTable(); });
+  $('#t').querySelectorAll('tr.row').forEach(tr => tr.onclick = () => location.hash = '#/stock/' + encodeURIComponent(tr.dataset.t));
+}
+
+// ---------- Backtest ----------
+function backtest() {
+  const o = S.overall, r = S.recent;
+  const row = (n, x) => `<tr><td>${n}</td><td class="n">${fmt(x.trades, 0)}</td><td class="n">${fmt(x.winRate, 1)}%</td><td class="n">${sgn(x.avgWin)}</td><td class="n">${sgn(x.avgLoss)}</td><td class="n">${sgn(x.avgReturn)}</td><td class="n">${fmt(x.profitFactor)}</td><td class="n">${fmt(x.avgDays, 1)}</td></tr>`;
+  const yrs = S.years.filter(y => y.trades >= 20);
+  const max = Math.max(...yrs.map(y => Math.abs(y.avgReturn)));
+  const ranked = [...S.stocks].filter(s => s.stats.trades >= 30).sort((a, b) => b.stats.profitFactor - a.stats.profitFactor);
+  app.innerHTML = `
+    <h1>30-year backtest</h1>
+    <p class="lede">Every signal since ${S.stocks.map(s => s.from).sort()[0].slice(0, 4)} traded once: enter at the signal-day close, exit at the first close beyond the ${S.rules.stopLossPct}% stop or at the next opposite signal. ${fmt(S.universe.rows, 0)} daily bars across ${S.universe.stocks} stocks. No costs or slippage.</p>
+    ${tiles([
+      ['Closed trades', fmt(o.all.trades, 0), 'buy + short'],
+      ['Buy-side profit factor', fmt(o.buy.profitFactor), `win ${fmt(o.buy.winRate, 1)}% · avg ${o.buy.avgReturn > 0 ? '+' : ''}${fmt(o.buy.avgReturn)}%`],
+      ['Short-side profit factor', fmt(o.short.profitFactor), `win ${fmt(o.short.winRate, 1)}% · avg ${fmt(o.short.avgReturn)}%`],
+      ['Last 5 years (all)', fmt(r.profitFactor), `win ${fmt(r.winRate, 1)}% · avg ${r.avgReturn > 0 ? '+' : ''}${fmt(r.avgReturn)}%`],
+    ])}
+    <div class="card"><h2>By side</h2><div class="tbl"><table>
+      <thead><tr><th>Side</th><th class="n">Trades</th><th class="n">Win rate</th><th class="n">Avg win</th><th class="n">Avg loss</th><th class="n">Avg trade</th><th class="n">Profit factor</th><th class="n">Avg days</th></tr></thead>
+      <tbody>${row('Buy', o.buy)}${row('Short', o.short)}${row('All', o.all)}${row('All, last 5 yrs', r)}</tbody></table></div>
+      <p class="note">Low win rate, high payoff: the stop cuts losers at about −${S.rules.stopLossPct}% to −4% while winners run until the trend reverses. A profit factor above 1 means gross gains exceeded gross losses.</p>
+    </div>
+    <div class="card"><h2>Average return per trade, by entry year</h2>
+      <div class="bars">${yrs.map(y => `<div style="height:${Math.max(2, Math.abs(y.avgReturn) / max * 100)}%;background:${y.avgReturn >= 0 ? css('--up') : css('--down')}" data-t="${y.year}: ${y.avgReturn > 0 ? '+' : ''}${fmt(y.avgReturn)}% · ${y.trades} trades · win ${fmt(y.winRate, 1)}%"></div>`).join('')}</div>
+      <div class="axis"><span>${yrs[0].year}</span><span>${yrs.at(-1).year}</span></div>
+      <p class="note">Bar height = size of the average trade; green positive, orange negative. Hover a bar for details.</p>
+    </div>
+    <div class="grid2">
+      <div class="card"><h2>Strongest stocks (profit factor)</h2><div class="tbl"><table><tbody>${ranked.slice(0, 8).map(s => `<tr class="row" data-t="${esc(s.ticker)}"><td class="tk">${esc(s.ticker)}</td><td class="n">${fmt(s.stats.profitFactor)}</td><td class="n">${fmt(s.stats.winRate, 1)}%</td><td class="n">${fmt(s.stats.trades, 0)} trades</td></tr>`).join('')}</tbody></table></div></div>
+      <div class="card"><h2>Weakest stocks (profit factor)</h2><div class="tbl"><table><tbody>${ranked.slice(-8).reverse().map(s => `<tr class="row" data-t="${esc(s.ticker)}"><td class="tk">${esc(s.ticker)}</td><td class="n">${fmt(s.stats.profitFactor)}</td><td class="n">${fmt(s.stats.winRate, 1)}%</td><td class="n">${fmt(s.stats.trades, 0)} trades</td></tr>`).join('')}</tbody></table></div></div>
+    </div>
+    <p class="note">Caveat: the universe is today's Nifty 50, so stocks that left the index are not included (survivorship bias). Past performance does not predict future results.</p>`;
+  app.querySelectorAll('tr.row').forEach(tr => tr.onclick = () => location.hash = '#/stock/' + encodeURIComponent(tr.dataset.t));
+}
+
+// ---------- Stock ----------
+async function stock(t) {
+  const s = S.stocks.find(x => x.ticker === t);
+  if (!s) { app.innerHTML = '<p class="lede" style="margin-top:28px">Unknown ticker.</p>'; return; }
+  app.innerHTML = `<a class="back" href="#/">← All signals</a><h1>${esc(s.ticker)} <span class="nm" style="font-size:15px;font-weight:500">${esc(s.name)}</span></h1>
+    <p class="lede">₹${fmt(s.price)} ${sgn(s.dayPct)} on ${dateFmt(s.date)} · trend ${s.trend === 'UP' ? '<span class="up">up</span>' : '<span class="down">down</span>'} · history from ${dateFmt(s.from)}</p>
+    ${tiles([
+      ['Latest buy signal', s.buy ? dateFmt(s.buy.date) : '–', s.buy ? `${s.buy.status.toLowerCase()} · ${s.buy.movePct > 0 ? '+' : ''}${fmt(s.buy.movePct)}% since` : ''],
+      ['Latest short signal', s.short ? dateFmt(s.short.date) : '–', s.short ? `${s.short.status.toLowerCase()} · ${s.short.movePct > 0 ? '+' : ''}${fmt(s.short.movePct)}% since` : ''],
+      ['Historical win rate', fmt(s.stats.winRate, 1) + '%', `${fmt(s.stats.trades, 0)} closed trades`],
+      ['Profit factor', fmt(s.stats.profitFactor), `avg trade ${s.stats.avgReturn > 0 ? '+' : ''}${fmt(s.stats.avgReturn)}%`],
+    ])}
+    <div class="card"><div id="chart"></div>
+      <div class="legend"><span><i style="background:#2563eb"></i>5 EMA</span><span><i style="background:#f59e0b"></i>13 EMA</span><span><i style="background:#9ca3af"></i>10 SMA</span><span>▲ buy · ▼ short</span></div></div>
+    <div class="card"><h2>Recent signals</h2><div class="tbl"><table id="tr"><tr><td class="note">Loading…</td></tr></table></div></div>`;
+  const d = await (await fetch(`data/stocks/${encodeURIComponent(t)}.json?v=${S.updated}`)).json();
+  const el = $('#chart');
+  const chart = LightweightCharts.createChart(el, {
+    autoSize: true, layout: { background: { color: 'transparent' }, textColor: css('--muted'), fontFamily: 'Inter' },
+    grid: { vertLines: { color: css('--line') }, horzLines: { color: css('--line') } },
+    rightPriceScale: { borderColor: css('--line') }, timeScale: { borderColor: css('--line') },
+  });
+  const candles = chart.addCandlestickSeries({ upColor: css('--up'), downColor: css('--down'), borderVisible: false, wickUpColor: css('--up'), wickDownColor: css('--down') });
+  candles.setData(d.bars.map(b => ({ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] })));
+  [[6, '#2563eb'], [7, '#f59e0b'], [8, '#9ca3af']].forEach(([i, c]) =>
+    chart.addLineSeries({ color: c, lineWidth: i === 8 ? 1 : 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false })
+      .setData(d.bars.filter(b => b[i] != null).map(b => ({ time: b[0], value: b[i] }))));
+  candles.setMarkers(d.bars.filter(b => b[9]).map(b => b[9] === 'BUY'
+    ? { time: b[0], position: 'belowBar', color: css('--up'), shape: 'arrowUp' }
+    : { time: b[0], position: 'aboveBar', color: css('--down'), shape: 'arrowDown' }));
+  chart.timeScale().setVisibleLogicalRange({ from: d.bars.length - 250, to: d.bars.length });
+  const label = { stop: 'Stop-loss', reverse: 'Opposite signal', open: 'Still open' };
+  $('#tr').innerHTML = `<thead><tr><th>Side</th><th>Entry</th><th class="n">Entry price</th><th>Exit</th><th class="n">Exit price</th><th class="n">Return</th><th class="n">Days</th><th>Exit reason</th></tr></thead><tbody>${d.trades.slice().reverse().map(x => `<tr>
+    <td><span class="chip ${x.side.toLowerCase()}">${x.side}</span></td><td>${dateFmt(x.entryDate)}</td><td class="n">₹${fmt(x.entry)}</td>
+    <td>${x.reason === 'open' ? '–' : dateFmt(x.exitDate)}</td><td class="n">${x.reason === 'open' ? '–' : '₹' + fmt(x.exit)}</td>
+    <td class="n">${sgn(x.ret)}</td><td class="n">${x.days}</td><td>${label[x.reason]}</td></tr>`).join('')}</tbody>`;
+}
+
+// ---------- Method ----------
+function method() {
+  const r = S.rules;
+  app.innerHTML = `<h1>Method</h1>
+    <p class="lede">This site started as a Google Sheet with one tab per stock. The same rules now run in a script on GitHub Actions each trading day, so the page loads in a second instead of recalculating 300,000+ rows.</p>
+    <div class="card"><h2>Signal rules (daily close)</h2>
+      <p><b>Buy</b> when all four are true:</p>
+      <ul><li>Close is above the ${r.sma}-day simple moving average</li><li>${r.ema[0]}-day EMA crosses above the ${r.ema[1]}-day EMA (it was at or below yesterday)</li><li>Volume is above its ${r.volSma}-day average</li></ul>
+      <p><b>Short</b> is the mirror image: close below the ${r.sma}-day SMA, ${r.ema[0]} EMA crosses below the ${r.ema[1]} EMA, volume above average.</p>
+      <p><b>Stop-loss:</b> ${r.stopLossPct}% from the signal price, checked on daily closes. A trade otherwise ends at the next opposite signal.</p>
+      <p class="mono">buy  = C &gt; SMA10 AND EMA5 &gt; EMA13 AND EMA5[-1] ≤ EMA13[-1] AND V &gt; VSMA5</p>
+    </div>
+    <div class="card"><h2>Pipeline</h2>
+      <ul><li>Daily OHLCV for the Nifty 50 constituents, full history, from a public market-data API.</li>
+      <li>A Node.js script computes indicators, signals and the backtest, then writes compact JSON.</li>
+      <li>GitHub Actions runs it each weekday after NSE close and commits the data; GitHub Pages serves this static site.</li></ul>
+      <p class="note">Last run: ${new Date(S.updated).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST · ${S.universe.stocks} stocks · ${fmt(S.universe.rows, 0)} rows${S.universe.failed.length ? ' · failed: ' + S.universe.failed.join(', ') : ''}</p>
+    </div>`;
+}
+
+async function route() {
+  const h = location.hash.replace(/^#\/?/, '');
+  const [r, arg] = h.split('/');
+  const key = r === 'stock' ? 'signals' : r || 'signals';
+  document.querySelectorAll('nav a').forEach(a => a.classList.toggle('on', a.dataset.r === key));
+  window.scrollTo(0, 0);
+  if (r === 'backtest') backtest(); else if (r === 'method') method(); else if (r === 'stock') await stock(decodeURIComponent(arg)); else signals();
+}
+
+fetch('data/summary.json?v=' + Date.now()).then(r => r.json()).then(j => {
+  S = j;
+  $('#asof').textContent = 'Data as of ' + dateFmt(S.asOf);
+  addEventListener('hashchange', route);
+  route();
+}).catch(() => app.innerHTML = '<p class="lede" style="margin-top:28px">Could not load data.</p>');
+</script>
+</body>
+</html>
